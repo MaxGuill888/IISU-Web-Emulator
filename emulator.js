@@ -1,65 +1,40 @@
 window.emulatorCore = {
-    currentCoreScript: null,
-
     start: function(coreName, romBytes, consoleType) {
-        // 1. Nettoyage de l'ancien script de cœur si présent
-        if (this.currentCoreScript) {
-            this.currentCoreScript.remove();
-            this.currentCoreScript = null;
-        }
-
-        // 2. Récupération des éléments HTML Canvas
-        const canvas = document.getElementById('game-canvas-1');
+        // 1. Récupération des éléments d'interface
+        const canvasContainer = document.getElementById('canvas-container');
         const borderImg = document.getElementById('console-border-img');
 
-        // Application de la bordure d'overlay selon la console
+        // Application de la bordure si présente
         if (borderImg) {
             borderImg.src = `assets/borders/${consoleType}.png`;
             borderImg.style.display = 'block';
         }
 
-        // 3. Configuration globale de l'objet Module requis par Emscripten/RetroArch
-        window.Module = {
-            canvas: canvas,
-            arguments: ["/game.rom"],
-            
-            // Redirection vers le dossier retroarch/ pour trouver le fichier .wasm
-            locateFile: function(path) {
-                if (path.endsWith('.wasm')) {
-                    return `retroarch/${path}`;
-                }
-                return path;
-            },
+        // 2. Nettoyage du conteneur d'émulation
+        canvasContainer.innerHTML = '<div id="game-player"></div>';
 
-            // Injection de la ROM dans le système de fichier virtuel (MEMFS) avant l'exécution
-            preRun: [function() {
-                try {
-                    Module.FS_createDataFile('/', 'game.rom', romBytes, true, true);
-                    console.log("ROM chargée avec succès dans le système de fichiers virtuel.");
-                } catch (err) {
-                    console.error("Erreur lors de la création du fichier virtuel ROM :", err);
-                }
-            }],
+        // 3. Conversion du Uint8Array en Blob/URL pour EmulatorJS
+        const romBlob = new Blob([romBytes], { type: 'application/octet-stream' });
+        const romUrl = URL.createObjectURL(romBlob);
 
-            onRuntimeInitialized: function() {
-                console.log(`Cœur ${coreName} initialisé et en cours d'exécution.`);
-            },
-
-            print: function(text) {
-                console.log(`[Core Output]: ${text}`);
-            },
-
-            printErr: function(text) {
-                console.error(`[Core Error]: ${text}`);
-            }
+        // Map des consoles vers les identifiants d'EmulatorJS
+        const systemMap = {
+            'NES': 'nes',
+            'SNES': 'snes',
+            'GBC': 'gbc',
+            'GBA': 'gba'
         };
 
-        // 4. Chargement dynamique du fichier JS du cœur
-        const script = document.createElement('script');
-        script.id = `script-core-${coreName}`;
-        script.src = `retroarch/${coreName}.js`;
-        this.currentCoreScript = script;
+        // 4. Configuration globale requise par EmulatorJS
+        window.EJS_player = '#game-player';
+        window.EJS_gameUrl = romUrl;
+        window.EJS_gameID = Date.now();
+        window.EJS_core = systemMap[consoleType] || 'gba';
+        window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
 
+        // 5. Injection du script d'émulation autonome
+        const script = document.createElement('script');
+        script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
         document.body.appendChild(script);
     }
 };
