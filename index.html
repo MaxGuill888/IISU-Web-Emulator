@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iisu Emulator UI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-light">
+    <div class="animated-bg"></div>
+
+    <!-- ZONE ÉMULATEUR -->
+    <main id="emulator-screen" class="view-section hidden">
+        <div id="screen-wrapper">
+            <img id="console-border-img" src="" alt="" style="display: none;">
+            <div id="canvas-container">
+                <canvas id="game-canvas-1"></canvas>
+                <canvas id="game-canvas-2" class="hidden"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <!-- PAGE ACCUEIL (Grille 2x3 dynamique) -->
+    <section id="page-home" class="view-section active">
+        <div id="home-grid" class="home-grid">
+            <div class="empty-state">
+                <p>Aucune ROM détectée.</p>
+                <button id="scan-btn-home" class="action-btn">Sélectionner le dossier ROMS</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- PAGE JEUX (Liste classée par console) -->
+    <section id="page-games" class="view-section hidden">
+        <div class="glass-card page-container">
+            <h2>Bibliothèque de Jeux</h2>
+            <div id="console-categories" class="console-categories">
+                <p class="empty-state-text">Veuillez d'abord sélectionner le dossier des ROMs dans l'accueil ou les paramètres.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PAGE RETROACHIEVEMENTS -->
+    <section id="page-trophies" class="view-section hidden">
+        <div class="glass-card page-container">
+            <h2>RetroAchievements</h2>
+            <div class="trophy-content">
+                <p>Connectez votre compte RetroAchievements pour afficher vos succès en jeu.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PAGE PARAMÈTRES -->
+    <section id="page-settings" class="view-section hidden">
+        <div class="glass-card page-container">
+            <h2>Paramètres</h2>
+            <div class="setting-row">
+                <label for="theme-selector">Thème :</label>
+                <select id="theme-selector">
+                    <option value="theme-light">Clair (iisu Classic)</option>
+                    <option value="theme-dark">Sombre (Neon Glass)</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Dossier des ROMs :</label>
+                <button id="scan-btn-settings" class="action-btn">Choisir le dossier ROMS</button>
+            </div>
+            <div id="folder-status" class="setting-status">Aucun dossier sélectionné</div>
+        </div>
+    </section>
+
+    <!-- BARRE DE NAVIGATION (Liquid Glass avec icônes 600x600px) -->
+    <footer class="bottom-controls">
+        <nav class="iisu-nav-bar liquid-glass">
+            <button class="iisu-btn active" data-target="page-home">
+                <img src="assets/icons/home.png" class="icon-default" alt="Home">
+                <img src="assets/icons/home_hover.png" class="icon-hover" alt="Home Hover">
+            </button>
+            <button class="iisu-btn" data-target="page-games">
+                <img src="assets/icons/game.png" class="icon-default" alt="Games">
+                <img src="assets/icons/game_hover.png" class="icon-hover" alt="Games Hover">
+            </button>
+            <button class="iisu-btn" data-target="page-trophies">
+                <img src="assets/icons/trophy.png" class="icon-default" alt="Trophies">
+                <img src="assets/icons/trophy_hover.png" class="icon-hover" alt="Trophies Hover">
+            </button>
+            <button class="iisu-btn" data-target="page-settings">
+                <img src="assets/icons/settings.png" class="icon-default" alt="Settings">
+                <img src="assets/icons/settings_hover.png" class="icon-hover" alt="Settings Hover">
+            </button>
+        </nav>
+    </footer>
+
+    <script src="emulator.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
