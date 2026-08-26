@@ -9,24 +9,68 @@
 <body class="theme-light">
     <div class="animated-bg"></div>
 
+    <!-- HUD global visible sur l'accueil et pendant le jeu -->
+    <header class="game-header game-header-left">
+        <div class="game-header-glass">
+            <button id="online-friends-button" class="game-header-button" type="button" aria-expanded="false">
+                <span class="status-dot"></span>
+                <span>Amis en ligne</span>
+                <strong id="online-friends-count">0</strong>
+            </button>
+            <div id="friends-panel" class="game-header-panel hidden">
+                <strong>Amis en ligne</strong>
+                <p>Aucun ami connecté pour le moment.</p>
+            </div>
+        </div>
+    </header>
+    <header class="game-header game-header-right">
+        <div class="game-header-glass">
+            <button id="game-clock" class="game-header-button" type="button">--:--</button>
+            <button id="game-battery" class="game-header-button" type="button">Batterie --</button>
+            <button id="achievements-button" class="game-header-button" type="button" aria-expanded="false">
+                <span>Succès</span>
+                <strong>0 / 0</strong>
+            </button>
+            <button id="profile-button" class="game-header-button profile-button" type="button" aria-expanded="false" aria-label="Profil">
+                <span class="profile-avatar"></span>
+            </button>
+            <div id="achievements-panel" class="game-header-panel hidden">
+                <strong>Succès</strong>
+                <p>Les succès seront configurables prochainement.</p>
+            </div>
+            <div id="profile-panel" class="game-header-panel hidden">
+                <strong>Profil</strong>
+                <p>La création de compte Firebase sera disponible prochainement.</p>
+                <button id="profile-sign-in" class="profile-panel-button" type="button">Créer un compte</button>
+            </div>
+        </div>
+    </header>
+    <header class="game-header game-header-center">
+        <div class="game-header-glass game-title-glass">
+            <span id="active-game-title">Aucun jeu sélectionné</span>
+        </div>
+    </header>
+
     <!-- ZONE ÉMULATEUR -->
     <main id="emulator-screen" class="view-section hidden">
         <div id="screen-wrapper">
-            <img id="console-border-img" src="" alt="" style="display: none;">
             <div id="canvas-container">
-                <canvas id="game-canvas-1"></canvas>
-                <canvas id="game-canvas-2" class="hidden"></canvas>
+                <div id="game-player"></div>
             </div>
         </div>
     </main>
 
     <!-- PAGE ACCUEIL (Grille 2x3 dynamique) -->
     <section id="page-home" class="view-section active">
-        <div id="home-grid" class="home-grid">
-            <div class="empty-state">
-                <p>Aucune ROM détectée.</p>
-                <button id="scan-btn-home" class="action-btn">Sélectionner le dossier ROMS</button>
+        <div class="rom-pages" id="rom-pages">
+            <button id="rom-page-prev" class="rom-page-arrow rom-page-prev" type="button" aria-label="Page précédente" aria-hidden="true" disabled>&lt;</button>
+            <div id="home-grid" class="home-grid">
+                <button class="rom-slot empty-slot" type="button" id="scan-btn-home">
+                    <span class="rom-slot-plus">+</span>
+                    <span>Ajouter une ROM</span>
+                </button>
             </div>
+            <button id="rom-page-next" class="rom-page-arrow rom-page-next" type="button" aria-label="Page suivante" aria-hidden="true" disabled>&gt;</button>
         </div>
     </section>
 
@@ -59,12 +103,35 @@
                 <select id="theme-selector">
                     <option value="theme-light">Clair (iisu Classic)</option>
                     <option value="theme-dark">Sombre (Neon Glass)</option>
+                    <option value="theme-ocean">Océan</option>
+                    <option value="theme-sunset">Coucher de soleil</option>
+                    <option value="theme-forest">Forêt</option>
+                    <option value="theme-rose">Rose électrique</option>
                 </select>
             </div>
+            <div class="setting-row">
+                <label for="emulator-volume">Volume :</label>
+                <input id="emulator-volume" type="range" min="0" max="100" value="80">
+                <output id="emulator-volume-value" for="emulator-volume">80%</output>
+            </div>
+            <label class="setting-toggle"><input id="auto-fullscreen" type="checkbox" checked> Plein écran automatique</label>
+            <label class="setting-toggle"><input id="auto-start" type="checkbox" checked> Démarrage automatique du jeu</label>
+            <label class="setting-toggle"><input id="show-game-hud" type="checkbox" checked> Afficher les headers pendant le jeu</label>
+            <label class="setting-toggle"><input id="auto-save" type="checkbox" checked> Sauvegarde automatique</label>
             <div class="setting-row">
                 <label>Dossier des ROMs :</label>
                 <button id="scan-btn-settings" class="action-btn">Choisir le dossier ROMS</button>
             </div>
+            <div class="setting-row">
+                <label for="ra-username">RetroAchievements :</label>
+                <input id="ra-username" type="text" placeholder="Nom d'utilisateur">
+            </div>
+            <div class="setting-row">
+                <label for="ra-api-key">Clé API :</label>
+                <input id="ra-api-key" type="password" placeholder="Clé API RetroAchievements">
+            </div>
+            <button id="ra-save-settings" class="action-btn" type="button">Enregistrer RetroAchievements</button>
+            <div id="ra-status" class="setting-status">RetroAchievements non configuré</div>
             <div id="folder-status" class="setting-status">Aucun dossier sélectionné</div>
         </div>
     </section>
@@ -91,7 +158,36 @@
         </nav>
     </footer>
 
+    <div id="cover-picker" class="cover-picker hidden" role="dialog" aria-modal="true" aria-labelledby="cover-picker-title">
+        <div class="cover-picker-panel">
+            <button id="cover-picker-close" class="cover-picker-close" type="button" aria-label="Fermer">&times;</button>
+            <h2 id="cover-picker-title">Choisir une box art</h2>
+            <label class="cover-upload">
+                <span>Importer une box art PNG</span>
+                <input id="cover-upload-input" type="file" accept="image/png">
+            </label>
+            <div id="cover-picker-grid" class="cover-picker-grid"></div>
+            <p id="cover-picker-status" class="cover-picker-status"></p>
+        </div>
+    </div>
+
+    <div id="exit-confirmation" class="exit-confirmation hidden" role="dialog" aria-modal="true" aria-labelledby="exit-confirmation-title">
+        <div class="exit-confirmation-panel">
+            <h2 id="exit-confirmation-title">Quitter le jeu ?</h2>
+            <p>Votre progression est conservée dans le navigateur.</p>
+            <div class="exit-confirmation-actions">
+                <button id="exit-confirmation-cancel" type="button">Rester dans le jeu</button>
+                <button id="exit-confirmation-accept" type="button">Quitter</button>
+            </div>
+        </div>
+    </div>
+
     <script src="emulator.js"></script>
     <script src="app.js"></script>
+    <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./service-worker.js?v=18');
+        }
+    </script>
 </body>
 </html>
