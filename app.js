@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'gbc': { name: 'GBC', core: 'gambatte_libretro', platformName: 'Game Boy Color' },
         'gb':  { name: 'GBC', core: 'gambatte_libretro', platformName: 'Game Boy Color' },
         'gba': { name: 'GBA', core: 'mgba_libretro', platformName: 'Game Boy Advance' }
-        'n64': { name: 'N64', core: 'n64wasm', platformName: 'Nintendo 64' }
     };
 
     const coverCache = new Map();
