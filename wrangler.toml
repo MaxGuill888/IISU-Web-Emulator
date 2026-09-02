@@ -5,7 +5,7 @@ compatibility_date = "2026-09-02"
 [[d1_databases]]
 binding = "DB"
 database_name = "iisu-emulator"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "d87b76f6-26f4-4989-9546-3bbe71ab5d2a"
 
 [assets]
 directory = "."
