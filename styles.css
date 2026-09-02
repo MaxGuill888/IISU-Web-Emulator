@@ -220,6 +220,59 @@ body {
     background: #111;
 }
 
+.game-tile-image .tile-title {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    z-index: 3;
+    overflow: hidden;
+    padding: 7px 8px;
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.68);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.favorite-mark {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 3;
+    color: #ffd166;
+    font-size: 1.6rem;
+    line-height: 1;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+}
+
+.favorite-button {
+    width: 32px;
+    height: 30px;
+    flex: 0 0 30px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #8993a4;
+    cursor: pointer;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.game-tile > .favorite-button {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    z-index: 4;
+}
+
+.favorite-button:hover,
+.favorite-button.is-favorite { color: #e6a700; }
+
 .game-cover {
     position: absolute;
     top: 50%;
@@ -270,6 +323,11 @@ body {
     color: #333;
 }
 
+.emulator-error {
+    color: #fff;
+    font: 600 1rem sans-serif;
+}
+
 /* --- PAGES GLASS CARD --- */
 .glass-card {
     background: var(--card-bg);
@@ -318,6 +376,8 @@ body {
 }
 .console-block li:hover { color: var(--highlight-cyan); }
 
+.console-block li > span { overflow: hidden; text-overflow: ellipsis; }
+
 .cover-settings {
     margin-left: auto;
     width: 30px;
@@ -346,6 +406,23 @@ body {
     border-radius: 6px;
     background: #eee;
 }
+
+.achievement-list,
+.achievement-page-list { list-style: none; margin-top: 10px; }
+.achievement-list li,
+.achievement-page-list li {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 0;
+    border-top: 1px solid rgba(120, 130, 150, 0.18);
+    opacity: 0.55;
+}
+.achievement-list li.earned,
+.achievement-page-list li.earned { opacity: 1; }
+.achievement-list small,
+.achievement-page-list small { font-size: 0.74rem; opacity: 0.72; }
+.achievement-page-list li span { font-size: 0.85rem; opacity: 0.78; }
 
 .setting-row {
     display: flex;
@@ -711,6 +788,32 @@ body.game-active .game-header-center {
     cursor: pointer;
     font: inherit;
 }
+
+.profile-form { display: grid; gap: 8px; margin-top: 10px; }
+.profile-form input {
+    width: 100%;
+    padding: 8px 9px;
+    border: 1px solid rgba(120, 130, 150, 0.35);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.65);
+    color: #343743;
+    font: inherit;
+}
+.profile-form-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.profile-panel-button.secondary { background: rgba(255, 255, 255, 0.38); }
+.friend-search-results { display: grid; gap: 6px; margin-top: 10px; font-size: 0.85rem; }
+.friend-result { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.friend-result button {
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: var(--highlight-cyan);
+    color: #000;
+    cursor: pointer;
+    font: inherit;
+}
+.online-friend { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.online-friend small { opacity: 0.72; }
 
 .exit-confirmation-actions button {
     display: inline-flex;

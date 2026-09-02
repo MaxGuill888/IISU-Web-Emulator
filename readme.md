@@ -11,14 +11,28 @@ A lightweight, browser-based front-end for running console ROMs with EmulatorJS 
 - Emulator integration via EmulatorJS (loader pulled from CDN)
 - Several UI themes and emulator settings (volume, auto fullscreen, auto-save, auto-start)
 - Service worker for offline support
+- Favoris et cache local des octets ROM pour relancer les jeux hors ligne
+- Comptes et amis via Cloudflare Workers + D1, sans confirmation email
 
 ## Supported ROM types (detected by extension)
 - NES: .nes
 - SNES: .sfc, .smc
 - Game Boy / Game Boy Color: .gb, .gbc
 - Game Boy Advance: .gba
+- Nintendo 64: .n64, .z64, .v64
 
 (See the in-code console mapping in app.js for exact behavior.)
+
+## Cloudflare: comptes et amis
+
+1. Installez Wrangler : `npm install -g wrangler`, puis connectez-vous avec `wrangler login`.
+2. Creez la base : `wrangler d1 create iisu-emulator`, puis copiez son `database_id` dans `wrangler.toml`.
+3. Initialisez les tables : `wrangler d1 execute iisu-emulator --remote --file=schema.sql`.
+4. Deployez avec `wrangler deploy`. Dans Cloudflare Pages, utilisez le meme projet Workers/Assets ou configurez le Worker comme fonction `/api/*`.
+5. Dans **Workers & Pages > Settings > Variables and Secrets**, ajoutez `AUTH_SECRET` comme secret aleatoire long. L'interface utilise `cloudflare-config.js` avec `apiBase: '/api'`. Aucun secret n'est mis dans le navigateur : les mots de passe sont haches dans le Worker et les sessions sont signees par le Worker.
+6. Important pour eviter HTTP 405 : le domaine ouvert dans le navigateur doit etre celui qui sert le Worker avec **Assets > run worker first** sur `/api/*`. Si Pages sert seulement les fichiers statiques, configurez une route Worker `/api/*` ou mettez l'URL Worker complete dans `cloudflare-config.js`.
+
+L'inscription est immediate et ne demande aucune confirmation email. Les comptes, la recherche par username et les amis sont geres dans le panneau Profil. La presence temps reel necessite ensuite un Durable Object ou un service WebSocket Cloudflare; le Worker fourni gere deja les comptes et les relations D1.
 
 ## Stack
 - Languages: HTML, CSS, JavaScript

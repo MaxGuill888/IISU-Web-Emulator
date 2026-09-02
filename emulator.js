@@ -8,13 +8,12 @@ window.emulatorCore = {
         const canvasContainer = document.getElementById('canvas-container');
         if (!canvasContainer) return;
 
-        document.body.classList.add('game-active', 'navigation-visible');
+        document.body.classList.add('game-active');
         document.body.classList.toggle('hud-disabled', window.emulatorSettings?.showHud === false);
         if (!this.activityListenerAttached) {
             document.addEventListener('mousemove', () => this.showNavigation());
             this.activityListenerAttached = true;
         }
-        this.showNavigation();
 
         canvasContainer.innerHTML = '<div id="game-player"></div>';
 
@@ -22,19 +21,25 @@ window.emulatorCore = {
         const romBlob = new Blob([romBytes], { type: 'application/octet-stream' });
         this.romUrl = URL.createObjectURL(romBlob);
 
+        if (consoleType === 'N64') {
+            this.startN64(romBytes);
+            return;
+        }
+
         // Map des consoles vers les identifiants d'EmulatorJS
         const systemMap = {
             'NES': 'nes',
             'SNES': 'snes',
             'GBC': 'gbc',
-            'GBA': 'gba'
+            'GBA': 'gba',
+            'N64': 'n64'
         };
 
         window.EJS_player = '#game-player';
         window.EJS_gameUrl = this.romUrl;
         window.EJS_gameID = gameId || `${consoleType}-${coreName}`;
-        window.EJS_core = systemMap[consoleType] || 'gba';
-        window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+        window.EJS_core = consoleType === 'N64' ? (coreName || systemMap[consoleType]) : (systemMap[consoleType] || 'gba');
+        window.EJS_pathtodata = consoleType === 'N64' ? './cores/' : 'https://cdn.emulatorjs.org/stable/data/';
         const settings = window.emulatorSettings || {};
         window.EJS_startOnLoaded = settings.autoStart !== false;
         window.EJS_volume = settings.volume ?? 80;
@@ -56,6 +61,30 @@ window.emulatorCore = {
                 }
             }, 60000);
         }
+    },
+
+    startN64: function(romBytes) {
+        const player = document.getElementById('game-player');
+        if (!player) return;
+        document.querySelector('script[data-emulatorjs-loader]')?.remove();
+        const canvas = document.createElement('canvas');
+        canvas.id = 'n64-canvas';
+        canvas.width = 640;
+        canvas.height = 480;
+        player.appendChild(canvas);
+        window.Module = {
+            canvas,
+            arguments: ['/rom.n64'],
+            locateFile: path => `./cores/${path}`,
+            preRun: [() => window.Module.FS_createDataFile('/', 'rom.n64', romBytes, true, true)]
+        };
+        const script = document.createElement('script');
+        script.src = './cores/n64wasm.js';
+        script.dataset.n64Loader = 'true';
+        script.onerror = () => {
+            player.innerHTML = '<p class="emulator-error">Le coeur N64 n’a pas pu être chargé.</p>';
+        };
+        document.body.appendChild(script);
     },
 
     showNavigation: function() {
@@ -80,6 +109,8 @@ window.emulatorCore = {
     exit: function() {
         clearTimeout(this.navigationTimer);
         clearInterval(this.autoSaveTimer);
+        document.querySelector('script[data-n64-loader]')?.remove();
+        window.Module = undefined;
         document.body.classList.remove('game-active', 'navigation-visible');
         document.body.classList.remove('hud-disabled');
         if (document.fullscreenElement && document.exitFullscreen) {
