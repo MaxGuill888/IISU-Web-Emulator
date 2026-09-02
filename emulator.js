@@ -8,13 +8,12 @@ window.emulatorCore = {
         const canvasContainer = document.getElementById('canvas-container');
         if (!canvasContainer) return;
 
-        document.body.classList.add('game-active', 'navigation-visible');
+        document.body.classList.add('game-active');
         document.body.classList.toggle('hud-disabled', window.emulatorSettings?.showHud === false);
         if (!this.activityListenerAttached) {
             document.addEventListener('mousemove', () => this.showNavigation());
             this.activityListenerAttached = true;
         }
-        this.showNavigation();
 
         canvasContainer.innerHTML = '<div id="game-player"></div>';
 
@@ -27,14 +26,15 @@ window.emulatorCore = {
             'NES': 'nes',
             'SNES': 'snes',
             'GBC': 'gbc',
-            'GBA': 'gba'
+            'GBA': 'gba',
+            'N64': 'n64'
         };
 
         window.EJS_player = '#game-player';
         window.EJS_gameUrl = this.romUrl;
         window.EJS_gameID = gameId || `${consoleType}-${coreName}`;
-        window.EJS_core = systemMap[consoleType] || 'gba';
-        window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+        window.EJS_core = consoleType === 'N64' ? (coreName || systemMap[consoleType]) : (systemMap[consoleType] || 'gba');
+        window.EJS_pathtodata = consoleType === 'N64' ? './cores/' : 'https://cdn.emulatorjs.org/stable/data/';
         const settings = window.emulatorSettings || {};
         window.EJS_startOnLoaded = settings.autoStart !== false;
         window.EJS_volume = settings.volume ?? 80;

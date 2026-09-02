@@ -19,7 +19,7 @@
             </button>
             <div id="friends-panel" class="game-header-panel hidden">
                 <strong>Amis en ligne</strong>
-                <p>Aucun ami connecté pour le moment.</p>
+                <p id="friends-panel-content">Aucun ami connecté pour le moment.</p>
             </div>
         </div>
     </header>
@@ -36,12 +36,25 @@
             </button>
             <div id="achievements-panel" class="game-header-panel hidden">
                 <strong>Succès</strong>
-                <p>Les succès seront configurables prochainement.</p>
+                <p>Configurez RetroAchievements dans les paramètres pour voir les succès.</p>
             </div>
             <div id="profile-panel" class="game-header-panel hidden">
                 <strong>Profil</strong>
-                <p>La création de compte Firebase sera disponible prochainement.</p>
-                <button id="profile-sign-in" class="profile-panel-button" type="button">Créer un compte</button>
+                <p id="profile-status">Connectez-vous ou créez un compte Cloudflare.</p>
+                <form id="profile-auth-form" class="profile-form">
+                    <input id="profile-username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+" placeholder="Username" autocomplete="username" required>
+                    <input id="profile-email" type="email" placeholder="Email" autocomplete="email" required>
+                    <input id="profile-password" type="password" minlength="6" placeholder="Mot de passe" autocomplete="new-password" required>
+                    <div class="profile-form-actions">
+                        <button class="profile-panel-button" type="submit">Créer un compte</button>
+                        <button id="profile-sign-in" class="profile-panel-button secondary" type="button">Se connecter</button>
+                    </div>
+                </form>
+                <form id="friend-search-form" class="profile-form hidden">
+                    <input id="friend-search-input" type="search" placeholder="Rechercher un username" autocomplete="off" required>
+                    <button class="profile-panel-button" type="submit">Rechercher</button>
+                </form>
+                <div id="friend-search-results" class="friend-search-results"></div>
             </div>
         </div>
     </header>
@@ -89,7 +102,7 @@
         <div class="glass-card page-container">
             <h2>RetroAchievements</h2>
             <div class="trophy-content">
-                <p>Connectez votre compte RetroAchievements pour afficher vos succès en jeu.</p>
+                <p>Connectez votre compte RetroAchievements puis lancez une ROM pour afficher les succès obtenus et ceux à débloquer.</p>
             </div>
         </div>
     </section>
@@ -182,11 +195,12 @@
         </div>
     </div>
 
+    <script src="cloudflare-config.js"></script>
     <script src="emulator.js"></script>
     <script src="app.js"></script>
     <script>
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./service-worker.js?v=18');
+                navigator.serviceWorker.register('./service-worker.js?v=19');
         }
     </script>
 </body>

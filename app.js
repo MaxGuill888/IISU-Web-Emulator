@@ -26,7 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
         'sfc': { name: 'SNES', core: 'snes9x_libretro', platformName: 'Super Nintendo Entertainment System' },
         'gbc': { name: 'GBC', core: 'gambatte_libretro', platformName: 'Game Boy Color' },
         'gb':  { name: 'GBC', core: 'gambatte_libretro', platformName: 'Game Boy Color' },
-        'gba': { name: 'GBA', core: 'mgba_libretro', platformName: 'Game Boy Advance' }
+        'gba': { name: 'GBA', core: 'mgba_libretro', platformName: 'Game Boy Advance' },
+        'n64': { name: 'N64', core: 'n64wasm', platformName: 'Nintendo 64' },
+        'z64': { name: 'N64', core: 'n64wasm', platformName: 'Nintendo 64' },
+        'v64': { name: 'N64', core: 'n64wasm', platformName: 'Nintendo 64' }
     };
 
     const coverCache = new Map();
@@ -36,14 +39,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let batteryManager = null;
     let activeRaPoll = null;
     let activeRaGameId = null;
+    let cloudflareApi = null;
+    let currentCloudflareUser = null;
 
     let scannedRoms = [];
     let romPage = 0;
     const romsPerPage = 8;
     const storageName = 'iisu-emulator-storage';
-    const storageVersion = 4;
+    const storageVersion = 5;
     const directoryStore = 'settings';
     const coverStore = 'covers';
+    const romStore = 'roms';
 
     function openStorage() {
         return new Promise((resolve, reject) => {
@@ -51,8 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
             request.onupgradeneeded = () => {
                 const db = request.result;
                 if (!db.objectStoreNames.contains(directoryStore)) db.createObjectStore(directoryStore);
-                if (db.objectStoreNames.contains(coverStore)) db.deleteObjectStore(coverStore);
-                db.createObjectStore(coverStore);
+                if (!db.objectStoreNames.contains(coverStore)) db.createObjectStore(coverStore);
+                if (!db.objectStoreNames.contains(romStore)) db.createObjectStore(romStore);
             };
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
@@ -103,6 +109,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         db.close();
         return value;
+    }
+
+    async function saveCachedRom(rom, bytes) {
+        const db = await openStorage();
+        await new Promise((resolve, reject) => {
+            const request = db.transaction(romStore, 'readwrite').objectStore(romStore).put({
+                ...rom, file: undefined, bytes, favorite: Boolean(rom.favorite)
+            }, rom.id);
+            request.onsuccess = resolve;
+            request.onerror = () => reject(request.error);
+        });
+        db.close();
+    }
+
+    async function loadCachedRoms() {
+        const db = await openStorage();
+        const cached = await new Promise((resolve, reject) => {
+            const request = db.transaction(romStore, 'readonly').objectStore(romStore).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+        db.close();
+        return cached.map(rom => ({ ...rom, file: null }));
+    }
+
+    async function toggleFavorite(rom) {
+        rom.favorite = !rom.favorite;
+        try {
+            const cached = (await loadCachedRoms()).find(item => item.id === rom.id);
+            if (cached) await saveCachedRom(rom, cached.bytes);
+        } catch (error) {
+            console.warn('Impossible de sauvegarder le favori :', error);
+        }
+        renderHomeGrid();
+        renderGamesList();
     }
 
     async function loadEmulatorSettings() {
@@ -293,8 +334,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         platformName: consoleConfig[ext].platformName || 'Nintendo Entertainment System',
                         id: romPath,
                         cover: `assets/borders/${consoleConfig[ext].name}.png`,
-                        file: file
+                        file: file,
+                        favorite: Boolean((await loadCachedRoms()).find(cached => cached.id === romPath)?.favorite)
                     });
+                    await saveCachedRom(scannedRoms[scannedRoms.length - 1], new Uint8Array(await file.arrayBuffer()));
                 }
             }
         }
@@ -362,10 +405,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const earned = achievements.filter(achievement => achievement.DateEarned).length;
             if (achievementsButton) achievementsButton.innerHTML = `<span>Succès</span><strong>${earned} / ${achievements.length}</strong>`;
             const panel = document.getElementById('achievements-panel');
-            if (panel) panel.innerHTML = `<strong>${data.Title || 'Succès'}</strong><p>${earned} succès débloqué(s) sur ${achievements.length}.</p>`;
+            if (panel) panel.innerHTML = `<strong>${data.Title || 'Succès'}</strong><p>${earned} succès débloqué(s) sur ${achievements.length}.</p><ul class="achievement-list">${achievements.map(achievement => `<li class="${achievement.DateEarned ? 'earned' : ''}"><span>${achievement.Title}</span><small>${achievement.DateEarned ? `Obtenu le ${new Date(achievement.DateEarned).toLocaleDateString('fr-FR')}` : 'À débloquer'}</small></li>`).join('')}</ul>`;
+            await saveSetting(`achievements-${gameId}`, { title: data.Title, achievements, earned });
+            renderAchievementsPage(data.Title, achievements, earned);
         } catch (error) {
+            const saved = await loadSetting(`achievements-${gameId}`).catch(() => null);
+            if (saved) renderAchievementsPage(saved.title, saved.achievements, saved.earned);
             if (raStatus) raStatus.textContent = 'Impossible de récupérer les succès RA.';
         }
+    }
+
+    function renderAchievementsPage(title, achievements, earned) {
+        const content = document.querySelector('#page-trophies .trophy-content');
+        if (!content) return;
+        content.innerHTML = `<h3>${title || 'Succès'}</h3><p>${earned} succès débloqué(s) sur ${achievements.length}.</p><ul class="achievement-page-list">${achievements.map(achievement => `<li class="${achievement.DateEarned ? 'earned' : ''}"><strong>${achievement.Title}</strong><span>${achievement.Description || ''}</span><small>${achievement.DateEarned ? `Obtenu le ${new Date(achievement.DateEarned).toLocaleString('fr-FR')}` : 'Non obtenu'}</small></li>`).join('')}</ul>`;
     }
 
     async function configureAchievements(rom, romBytes) {
@@ -402,13 +455,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const dirHandle = await loadDirectoryHandle();
-            if (!dirHandle) return;
+            if (!dirHandle) {
+                scannedRoms = await loadCachedRoms();
+                renderHomeGrid();
+                renderGamesList();
+                return;
+            }
 
             const permission = await dirHandle.queryPermission({ mode: 'read' });
             if (permission !== 'granted') {
                 if (folderStatus) {
                     folderStatus.textContent = `Dossier mémorisé : ${dirHandle.name}. Cliquez pour réautoriser l'accès.`;
                 }
+                scannedRoms = await loadCachedRoms();
+                renderHomeGrid();
+                renderGamesList();
                 return;
             }
 
@@ -594,6 +655,84 @@ document.addEventListener('DOMContentLoaded', () => {
         }).format(new Date());
     }
 
+    function cloudflareConfigured() {
+        return Boolean(window.IISU_CLOUDFLARE_CONFIG?.apiBase);
+    }
+
+    function renderOnlineFriends(presenceState) {
+        const friends = Object.values(presenceState || {}).flat().filter(friend => friend.user_id !== currentCloudflareUser?.id);
+        const count = document.getElementById('online-friends-count');
+        const content = document.getElementById('friends-panel-content');
+        if (count) count.textContent = String(friends.length);
+        if (content) content.innerHTML = friends.length ? friends.map(friend => `<span class="online-friend"><strong>${friend.username || 'Ami'}</strong><small>${friend.romName ? ` joue a ${friend.romName}` : ' en ligne'}</small></span>`).join('') : 'Aucun ami connecte pour le moment.';
+    }
+
+    async function cloudflareRequest(path, options = {}) {
+        const headers = { 'content-type': 'application/json', ...(options.headers || {}) };
+        const sessionToken = localStorage.getItem('iisu-cloudflare-session');
+        if (sessionToken) headers.authorization = `Bearer ${sessionToken}`;
+        const response = await fetch(`${cloudflareApi}${path}`, { ...options, headers });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Cloudflare HTTP ${response.status}`);
+        return data;
+    }
+
+    async function setupCloudflare() {
+        if (!cloudflareConfigured()) return;
+        cloudflareApi = window.IISU_CLOUDFLARE_CONFIG.apiBase;
+        try {
+            const data = await cloudflareRequest('/me');
+            currentCloudflareUser = data.user;
+        } catch (error) {
+            localStorage.removeItem('iisu-cloudflare-session');
+        }
+        updateProfileUi();
+    }
+
+    function updateProfileUi() {
+        const status = document.getElementById('profile-status');
+        const form = document.getElementById('profile-auth-form');
+        const friendForm = document.getElementById('friend-search-form');
+        if (currentCloudflareUser) {
+            if (status) status.textContent = `Connecté : ${currentCloudflareUser.email}`;
+            form?.classList.add('hidden');
+            friendForm?.classList.remove('hidden');
+        } else {
+            if (status) status.textContent = 'Connectez-vous ou créez un compte Cloudflare.';
+            form?.classList.remove('hidden');
+            friendForm?.classList.add('hidden');
+        }
+    }
+
+    async function searchFriends(username) {
+        const results = document.getElementById('friend-search-results');
+        if (!results || !cloudflareApi || !currentCloudflareUser) return;
+        results.textContent = 'Recherche...';
+        let data;
+        try { data = (await cloudflareRequest(`/users?username=${encodeURIComponent(username)}`)).users; } catch (error) {
+            results.textContent = `Recherche impossible : ${error.message}`;
+            return;
+        }
+        results.innerHTML = data.length ? data.map(profile => `<div class="friend-result"><strong>${profile.username}</strong><button type="button" data-friend-id="${profile.id}">Ajouter</button></div>`).join('') : 'Aucun utilisateur trouvé.';
+        results.querySelectorAll('[data-friend-id]').forEach(button => button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                await cloudflareRequest('/friends', { method: 'POST', body: JSON.stringify({ friendId: button.dataset.friendId }) });
+                button.textContent = 'Ami ajouté';
+            } catch (error) {
+                button.textContent = 'Erreur';
+            }
+        }));
+    }
+
+    async function startPresence() {
+        renderOnlineFriends({});
+    }
+
+    async function updatePresenceRom(romName) {
+        return romName;
+    }
+
     async function updateBattery() {
         const battery = document.getElementById('game-battery');
         if (!battery) return;
@@ -640,9 +779,55 @@ document.addEventListener('DOMContentLoaded', () => {
         panel?.classList.toggle('hidden', expanded);
     });
 
-    document.getElementById('profile-sign-in')?.addEventListener('click', () => {
+    document.getElementById('profile-auth-form')?.addEventListener('submit', async event => {
+        event.preventDefault();
         const panel = document.getElementById('profile-panel');
-        if (panel) panel.querySelector('p').textContent = 'Firebase sera connecté ici prochainement.';
+        if (!cloudflareApi) {
+            document.getElementById('profile-status').textContent = 'Configurez cloudflare-config.js puis rechargez la page.';
+            return;
+        }
+        const username = document.getElementById('profile-username').value.trim();
+        const email = document.getElementById('profile-email').value.trim();
+        const password = document.getElementById('profile-password').value;
+        try {
+            const data = await cloudflareRequest('/signup', { method: 'POST', body: JSON.stringify({ username, email, password }) });
+            localStorage.setItem('iisu-cloudflare-session', data.token);
+            currentCloudflareUser = data.user;
+            updateProfileUi();
+        } catch (error) {
+            document.getElementById('profile-status').textContent = `Inscription impossible : ${error.message}`;
+            return;
+        }
+        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+    });
+
+    document.getElementById('profile-sign-in')?.addEventListener('click', async () => {
+        const panel = document.getElementById('profile-panel');
+        if (!cloudflareApi) {
+            document.getElementById('profile-status').textContent = 'Configurez cloudflare-config.js puis rechargez la page.';
+            return;
+        }
+        const email = document.getElementById('profile-email').value.trim();
+        const password = document.getElementById('profile-password').value;
+        if (!email || !password) {
+            document.getElementById('profile-status').textContent = 'Renseignez votre email et votre mot de passe.';
+            return;
+        }
+        try {
+            const data = await cloudflareRequest('/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+            localStorage.setItem('iisu-cloudflare-session', data.token);
+            currentCloudflareUser = data.user;
+            document.getElementById('profile-status').textContent = `Connecté : ${email}`;
+            updateProfileUi();
+                if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+        } catch (error) {
+            document.getElementById('profile-status').textContent = `Connexion impossible : ${error.message}`;
+        }
+    });
+
+    document.getElementById('friend-search-form')?.addEventListener('submit', event => {
+        event.preventDefault();
+        searchFriends(document.getElementById('friend-search-input').value.trim());
     });
 
     document.getElementById('game-battery')?.addEventListener('click', updateBattery);
@@ -675,16 +860,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const pageRoms = scannedRoms.slice(pageStart, pageStart + romsPerPage);
 
         pageRoms.forEach(rom => {
-            const tile = document.createElement('button');
-            tile.type = 'button';
+            const tile = document.createElement('div');
+            tile.setAttribute('role', 'button');
+            tile.tabIndex = 0;
             tile.className = 'game-tile rom-slot';
             tile.innerHTML = `
                 <div class="game-tile-image">
                     <img class="game-cover" data-rom-key="${coverKey(rom)}" src="${rom.cover}" alt="Boîte de ${rom.name}">
                     <img class="game-border" src="${consoleBorder(rom.console)}" alt="">
+                    <span class="favorite-mark" aria-hidden="true">${rom.favorite ? '★' : '☆'}</span>
                 </div>
+                <span class="tile-title">${rom.name}</span>
             `;
             tile.addEventListener('click', () => launchGame(rom));
+            tile.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    launchGame(rom);
+                }
+            });
+            const favoriteButton = document.createElement('button');
+            favoriteButton.type = 'button';
+            favoriteButton.className = `favorite-button${rom.favorite ? ' is-favorite' : ''}`;
+            favoriteButton.textContent = rom.favorite ? '★' : '☆';
+            favoriteButton.title = rom.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris';
+            favoriteButton.setAttribute('aria-label', favoriteButton.title);
+            favoriteButton.addEventListener('click', event => {
+                event.stopPropagation();
+                toggleFavorite(rom);
+            });
+            tile.appendChild(favoriteButton);
             tile.addEventListener('mouseenter', () => showHoveredGameName(rom.name));
             tile.addEventListener('mouseleave', clearHoveredGameName);
             tile.addEventListener('focus', () => showHoveredGameName(rom.name));
@@ -787,6 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <li data-index="${index}">
                         <img class="game-list-image" data-rom-key="${coverKey(rom)}" src="${rom.cover}" alt="">
                         <span>${rom.name}</span>
+                        <button class="favorite-button${rom.favorite ? ' is-favorite' : ''}" type="button" aria-label="${rom.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${rom.favorite ? '★' : '☆'}</button>
                         <button class="cover-settings" type="button" data-rom-index="${index}" aria-label="Choisir la box art">
                             <img src="assets/icons/settings.png" alt="">
                         </button>
@@ -811,6 +1017,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     openCoverPicker(grouped[consoleName][button.dataset.romIndex]);
                 });
             });
+            block.querySelectorAll('.favorite-button').forEach((button, index) => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    toggleFavorite(grouped[consoleName][index]);
+                });
+            });
 
             container.appendChild(block);
         });
@@ -829,12 +1041,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const arrayBuffer = await rom.file.arrayBuffer();
-            const romBytes = new Uint8Array(arrayBuffer);
+            const romBytes = rom.file ? new Uint8Array(await rom.file.arrayBuffer()) : new Uint8Array(rom.bytes);
 
             if (window.emulatorCore) {
                 window.emulatorCore.start(rom.coreName, romBytes, rom.console, rom.id);
             }
+            updatePresenceRom(rom.name);
             configureAchievements(rom, romBytes);
         } catch (error) {
             console.error("Erreur d'ouverture du fichier ROM :", error);
@@ -865,6 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
         event.target.value = '';
     });
     setupGameHeader();
+    setupCloudflare();
     loadEmulatorSettings();
     loadTheme();
     loadRetroAchievementsSettings();

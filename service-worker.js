@@ -1,10 +1,13 @@
-const CACHE_NAME = 'iisu-emulator-v18';
+const CACHE_NAME = 'iisu-emulator-v19';
 const APP_SHELL = [
     './',
     './index.html',
     './styles.css',
     './app.js',
-    './emulator.js'
+    './emulator.js',
+    './cloudflare-config.js',
+    './cores/n64wasm.js',
+    './cores/n64wasm.wasm'
 ];
 
 self.addEventListener('install', event => {
@@ -23,11 +26,17 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
-    event.respondWith(
-        caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
+    event.respondWith((async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        try {
+            const response = await fetch(event.request);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
             return response;
-        }).catch(() => caches.match('./index.html')))
-    );
+        } catch (error) {
+            return caches.match('./index.html');
+        }
+    })());
 });
